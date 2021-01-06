@@ -9,36 +9,38 @@ interface SquareProps {
     onClick: () => void;
 }
 
-class Square extends React.Component<SquareProps> {
-
-  render() {
-    return (
-      <button
-        className="square"
-        onClick={() => this.props.onClick()}
-      >
-        {this.props.value}
-      </button>
-    );
-  }
+function Square(props: SquareProps) {
+  return (
+    <button className="square" onClick={props.onClick} >
+      {props.value}
+    </button>
+  );
 }
 
 interface BoardState {
   squares: squareType[];
+  xIsNext: boolean;
 }
 
 class Board extends React.Component<any, BoardState> {
   constructor(props: any) {
     super(props);
     this.state = {
-      squares: Array(9).fill(null)
+      squares: Array(9).fill(null),
+      xIsNext: true
     };
   }
 
   handleClick(i: number) {
     const squares = this.state.squares.slice();
-    squares[i] = "X";
-    this.setState({squares: squares})
+    if (calculateWinner(squares) || squares[i]) {
+      return;
+    }
+    squares[i] = this.state.xIsNext ? "X" : "O";
+    this.setState({
+      squares: squares,
+      xIsNext: !this.state.xIsNext
+    });
   }
 
   renderSquare(i: number) {
@@ -51,7 +53,13 @@ class Board extends React.Component<any, BoardState> {
   }
 
   render() {
-    const status = 'Next player: X';
+    const winner = calculateWinner(this.state.squares);
+    let status: string;
+    if (winner) {
+      status = "Winner: " + winner;
+    } else {
+      status = "Next player: " + (this.state.xIsNext ? "X" : "O");
+    }
 
     return (
       <div>
@@ -98,3 +106,26 @@ ReactDOM.render(
   <Game />,
   document.getElementById('root')
 );
+
+// ========================================
+
+// Helper Function
+function calculateWinner(squares: squareType[]) {
+  const lines = [
+    [0, 1, 2],
+    [3, 4, 5],
+    [6, 7, 8],
+    [0, 3, 6],
+    [1, 4, 7],
+    [2, 5, 8],
+    [0, 4, 8],
+    [2, 4, 6],
+  ];
+  for (let i = 0; i < lines.length; i++) {
+    const [a, b, c] = lines[i];
+    if (squares[a] && squares[a] === squares[b] && squares[a] === squares[c]) {
+      return squares[a];
+    }
+  }
+  return null;
+}
