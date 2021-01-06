@@ -2,10 +2,10 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import './index.css';
 
-type squareType = string | null;
+type SquareType = "X" | "O" | null;
 
 interface SquareProps {
-    value: squareType;
+    value: SquareType;
     onClick: () => void;
 }
 
@@ -17,53 +17,25 @@ function Square(props: SquareProps) {
   );
 }
 
-interface BoardState {
-  squares: squareType[];
-  xIsNext: boolean;
+
+interface BoardProps {
+  squares: SquareType[];
+  onClick: (i: number) => void;
 }
 
-class Board extends React.Component<any, BoardState> {
-  constructor(props: any) {
-    super(props);
-    this.state = {
-      squares: Array(9).fill(null),
-      xIsNext: true
-    };
-  }
-
-  handleClick(i: number) {
-    const squares = this.state.squares.slice();
-    if (calculateWinner(squares) || squares[i]) {
-      return;
-    }
-    squares[i] = this.state.xIsNext ? "X" : "O";
-    this.setState({
-      squares: squares,
-      xIsNext: !this.state.xIsNext
-    });
-  }
-
+class Board extends React.Component<BoardProps> {
   renderSquare(i: number) {
     return (
     <Square
-      value={this.state.squares[i]}
-      onClick={() => this.handleClick(i)}
+      value={this.props.squares[i]}
+      onClick={() => this.props.onClick(i)}
     />
     );
   }
 
   render() {
-    const winner = calculateWinner(this.state.squares);
-    let status: string;
-    if (winner) {
-      status = "Winner: " + winner;
-    } else {
-      status = "Next player: " + (this.state.xIsNext ? "X" : "O");
-    }
-
     return (
       <div>
-        <div className="status">{status}</div>
         <div className="board-row">
           {this.renderSquare(0)}
           {this.renderSquare(1)}
@@ -84,16 +56,83 @@ class Board extends React.Component<any, BoardState> {
   }
 }
 
-class Game extends React.Component {
+type History = {squares: SquareType[]}
+
+interface GameState {
+  histories: History[],
+  stepNumber: number,
+  xIsNext: boolean
+}
+
+class Game extends React.Component<any, GameState> {
+  constructor(props: any) {
+    super(props);
+    this.state = {
+      histories: [{
+        squares: Array(9).fill(null)
+      }],
+      stepNumber: 0,
+      xIsNext: true
+    }
+  }
+
+  handleClick(i: number) {
+    const histories = this.state.histories.slice(0, this.state.stepNumber + 1);
+    const current = histories[histories.length - 1];
+    const squares = current.squares.slice();
+    if (calculateWinner(squares) || squares[i]) {
+      return;
+    }
+    squares[i] = this.state.xIsNext ? "X" : "O";
+    this.setState({
+      histories: histories.concat([{
+        squares: squares
+      }]),
+      stepNumber: histories.length,
+      xIsNext: !this.state.xIsNext
+    });
+  }
+
+  jumpTo(step: number) {
+    this.setState({
+      stepNumber: step,
+      xIsNext: (step % 2) === 0,
+    });
+  }
+
   render() {
+    const histories = this.state.histories;
+    const current = histories[this.state.stepNumber];
+    const winner = calculateWinner(current.squares);
+    let status: string;
+    if (winner) {
+      status = "Winner: " + winner;
+    } else {
+      status = "Next player: " + (this.state.xIsNext ? "X" : "O");
+    }
+
+    const moves = histories.map((_: History, step: number) => {
+      const desc = step ?
+        "Go to move #" + step :
+        "Go to game start";
+      return (
+        <li key={step}>
+          <button onClick={() => this.jumpTo(step)}>{desc}</button>
+        </li>
+      );
+    });
+
     return (
       <div className="game">
         <div className="game-board">
-          <Board />
+          <Board
+            squares={current.squares}
+            onClick={(i: number) => this.handleClick(i)}
+          />
         </div>
         <div className="game-info">
-          <div>{/* status */}</div>
-          <ol>{/* TODO */}</ol>
+          <div>{status}</div>
+          <ol>{moves}</ol>
         </div>
       </div>
     );
@@ -110,7 +149,7 @@ ReactDOM.render(
 // ========================================
 
 // Helper Function
-function calculateWinner(squares: squareType[]) {
+function calculateWinner(squares: SquareType[]) {
   const lines = [
     [0, 1, 2],
     [3, 4, 5],
